@@ -1,0 +1,58 @@
+#!/bin/bash -e
+# Script for configuring the build system
+# 2020-12-11 Bela Bursan
+
+. scripts/config
+
+# # # # # # # # # # # # # # #  CONFIGURE  # # # # # # # # # # # # # # # # # # #
+
+
+## Run the configuration and install all neccessary stuff
+function run_configure()
+{
+    cd scripts
+
+    if [ "$INSTALL_PACKAGES" == "1" ]
+    then
+        ./install_packages
+    fi
+
+    if [ "$INSTALL_ANDROID" == "1" ]
+    then
+        ./install_android
+    fi
+
+    if [ "$DOWNLOAD_PJSIP" == "1" ]
+    then
+        ./download_pjsip
+    fi
+
+    if [ "$DOWNLOAD_SWIG" == "1" ]
+    then
+        ./build_swig
+    fi
+
+    if [ "$DOWNLOAD_OPENSSL" == "1" ]
+    then
+        ./build_openssl
+    fi
+
+    if [ "$DOWNLOAD_OPENH264" == "1" ]
+    then
+        ./download_openh264
+    fi
+
+    if [ "$DOWNLOAD_OPUS" == "1" ]
+    then
+        ./build_opus
+    fi
+}
+
+# # # # # S T A R T # # #
+if [ "$#" != "0" ]; then
+    nano scripts/config
+    exit 0
+fi
+
+run_configure
+echog "\nThe build system is ready! Run: ./build to build PJSIP\n"

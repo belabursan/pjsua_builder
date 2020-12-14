@@ -1,0 +1,111 @@
+#!/bin/bash -e
+# Script for building PJSIP for Android
+# 2020-12-14 Bela Bursan
+
+. scripts/config
+
+ZIPFILE="libpjsua.zip"
+PJSIP_PATH="/tmp/pjsip"
+PJSUA_BASE_DIR="${PJSIP_PATH}/pjsip-apps/src/swig"
+
+BUILD_LIB_PATH="${OUTPUT_DIR}/lib"
+BUILD_LOGS_PATH="${OUTPUT_DIR}/logs"
+
+
+## Clean output directory
+function clean_output
+{
+    echoy "Clean output folder ..."
+    rm -rf "${OUTPUT_DIR}"
+    mkdir -p "${OUTPUT_DIR}"
+
+    mkdir -p "$BUILD_LIB_PATH"
+    mkdir -p "$BUILD_LOGS_PATH"
+    if [ -f "$WORKING_ROOT_DIR/$ZIPFILE" ]; then
+        rm "$WORKING_ROOT_DIR/$ZIPFILE"
+    fi
+}
+
+## Set configuration in config_site.h
+function set_config_site
+{
+    echoy "Creating config site file for Android ..."
+
+    cd "$PJSIP_PATH/pjlib/include/pj"
+    echo -e "#define PJ_CONFIG_ANDROID 1\
+    \n#include <pj/config_site_sample.h>\
+    \n#define PJMEDIA_HAS_VIDEO 1\
+    \n#define PJMEDIA_AUDIO_DEV_HAS_ANDROID_JNI 0\
+    \n#define PJMEDIA_AUDIO_DEV_HAS_OPENSL 1 \
+    \n#define PJSIP_AUTH_AUTO_SEND_NEXT 0\
+    \n#define PJMEDIA_HAS_OPUS_CODEC 1\n" > config_site.h
+}
+
+
+function build_pjsip
+{
+    for arch in "${TARGET_ARCHS[@]}"
+    do
+        echoy "\nCompile PJSIP for arch $arch ..."
+        PJSUA_SO_PATH="${PJSUA_BASE_DIR}/java/android/app/src/main/jniLibs/$arch/libpjsua2.so"
+
+        # create working dir
+        cd /tmp
+        if [ -d "$PJSIP_PATH" ]; then
+            rm -rf "$PJSIP_PATH"
+        fi
+        mkdir -p "$PJSIP_PATH"
+
+        # copy pjsip src to working dir and set config_site
+        cd "$WORKING_ROOT_DIR/$PJSIP_DIR_NAME"
+        cp -r * "$PJSIP_PATH"
+        set_config_site
+        cd "$PJSIP_PATH"
+
+        args=("--use-ndk-cflags"
+            "--with-ssl=$ROOT_LIB_DIR/$OPENSSL_DIR_NAME/${arch}"
+            "--with-openh264=$ROOT_LIB_DIR/$OPENH264_DIR_NAME/${arch}"
+            "--with-opus=$ROOT_LIB_DIR/$OPUS_DIR_NAME/${arch}"
+            "--enable-g729-codec "
+            )
+
+        # configure android
+        APP_PLATFORM=android-"$ANDROID_TARGET_API" TARGET_ABI=$arch ./configure-android "${args[@]}" >> "${BUILD_LOGS_PATH}/${arch}.log" 2>&1
+
+        make dep >>"${BUILD_LOGS_PATH}/${arch}.log" 2>&1
+
+        # make clean and make
+        cd "$PJSIP_PATH/pjsip-apps/src/pjsua/android/jni" && make clean >>"${BUILD_LOGS_PATH}/${arch}.log" 2>&1
+        cd "$PJSIP_PATH/pjsip-apps/src/swig" && make clean >>"${BUILD_LOGS_PATH}/${arch}.log" 2>&1
+        cd "$PJSIP_PATH" && make clean >>"${BUILD_LOGS_PATH}/${arch}.log" 2>&1
+
+        make >>"${BUILD_LOGS_PATH}/${arch}.log" 2>&1
+
+        echo "Compile PJSUA for arch $arch ..."
+        cd "${PJSUA_BASE_DIR}"
+        make clean && make >>"${BUILD_LOGS_PATH}/${arch}.log" 2>&1
+
+        echo "Copying PJSUA .so library to final build directory ..."
+        mkdir -p "${BUILD_LIB_PATH}/${arch}"
+        mv "${PJSUA_SO_PATH}" "${BUILD_LIB_PATH}/${arch}/"
+
+        if [ -f "$ROOT_LIB_DIR/${arch}/lib/libopenh264.so" ]; then
+            echo "Copying OpenH264 .so library to final build directory ..."
+            cp "$ROOT_LIB_DIR/${arch}/lib/libopenh264.so" ${BUILD_LIB_PATH}/${arch}/
+        fi
+
+        echog "Done building for arch $arch"
+    done
+    cp -r "$PJSUA_BASE_DIR/java/android/app/src/main/java/" "$OUTPUT_DIR"
+}
+
+
+# # # # # S T A R T # # #
+set_android_paths
+clean_output
+build_pjsip
+rm -rf "$PJSIP_PATH"
+cd "$WORKING_ROOT_DIR"
+zip -r "$ZIPFILE" out
+
+echog "FINISHED! See: $OUTPUT_DIR"

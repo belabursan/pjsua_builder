@@ -1,0 +1,83 @@
+#!/bin/bash -e
+# Script for building OpenSSL for Android
+# 2020-12-09 Bela Bursan
+
+. config
+
+# # # # # # # # # # # # # # #  OPENSSL  # # # # # # # # # # # # # # # # # # #
+OPENSSL_DOWNLOAD_URL="https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz"
+# Possible values: android-arm, android-arm64, android-x86, android-x86 etc
+ARCHITECTURES=("android-arm" "android-arm64")
+
+
+
+## Cleans old stuff
+function clean_openssl()
+{
+    if [ -d  "/tmp/$OPENSSL_DIR_NAME" ]; then
+      rm -rf "/tmp/$OPENSSL_DIR_NAME"
+    fi
+}
+
+## Creates neccessary directories
+function setup_openssl()
+{
+    if [ ! -d "$ROOT_LIB_DIR/$OPENSSL_DIR_NAME" ]; then
+        mkdir -p "$ROOT_LIB_DIR/$OPENSSL_DIR_NAME"
+    fi
+}
+
+## Downloads the openssl source
+function download_openssl()
+{
+    echoy "Downloading OpenSSL ${OPENSSL_VERSION} ..."
+    cd /tmp
+    curl -L -# -o openssl.tar.gz "$OPENSSL_DOWNLOAD_URL" 2>&1
+    tar xzf openssl.tar.gz && rm -rf openssl.tar.gz
+    echog "Done"
+}
+
+## Build the lib
+function build_openssl()
+{
+    CC=${NDK_TOOLCHAIN_VERSION}
+    cd "/tmp/$OPENSSL_DIR_NAME"
+    for arch in "${ARCHITECTURES[@]}"
+    do
+        REAL_ARC="arm64-v8a"
+        if [ "$arch" == "android-arm" ]; then 
+            REAL_ARC="armeabi-v7a"
+        fi
+
+        echoy "\nCompiling openssl for arch: $REAL_ARC"
+        # C O N F I G U R E
+        ./Configure ${arch} -D__ANDROID_API__=$ANDROID_TARGET_API
+
+        # B U I L D
+        make clean && make 2>&1 > /dev/null
+
+        # Move libs to global lib directory
+        GLOBAL_LIB="$ROOT_LIB_DIR/$OPENSSL_DIR_NAME/$REAL_ARC/lib"
+        mkdir -p $GLOBAL_LIB
+        cp libcrypto.so.* $GLOBAL_LIB
+        cp libcrypto.a $GLOBAL_LIB
+        cp libssl.so.* $GLOBAL_LIB
+        cp libssl.a $GLOBAL_LIB
+    done
+
+    # Copy include directory
+    echo -e "Copy include directory"
+    INCLUDE_DIR="$ROOT_LIB_DIR/$OPENSSL_DIR_NAME/include"
+    mkdir -p $INCLUDE_DIR
+    cp -RL include/openssl $INCLUDE_DIR
+
+    cd /tmp && rm -rf "$OPENSSL_DIR_NAME"
+    echog "OpenSSL built successfully"
+}
+
+# # # # # S T A R T # # #
+clean_openssl
+setup_openssl
+set_android_paths
+download_openssl
+build_openssl

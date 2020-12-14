@@ -1,0 +1,115 @@
+#!/bin/bash -e
+# Configuration file
+# 2020-12-09 Bela Bursan
+
+## Colors
+C="\033[96m"  # Cyan
+R="\033[91m"  # Red
+E="\033[0m"   # End of color
+Y="\033[93m"  # Yellow color
+G="\033[92m"  # Green color
+
+
+# The git repository shall be saved in this directory
+#WORKING_ROOT_DIR="/Users/buri/Projects/work"
+WORKING_ROOT_DIR="/home/bin"
+
+# The output of the final result
+OUTPUT_DIR="$WORKING_ROOT_DIR/out"
+
+# Directory where libraries, as openh264 are saved
+ROOT_LIB_DIR="$WORKING_ROOT_DIR/libs"
+
+# Can be: darwin-x86_64, windows-x86_64,linux-x86_64 if you are on those hosts
+HOST_TAG="linux-x86_64"
+
+# Target architectures that you want to build
+# Refer to the official NDK docs: https://developer.android.com/ndk/guides/abis.html#sa
+# Build only for "armeabi" "armeabi-v7a" "x86" as these are the only architectures
+# for which all the libraries are build without problems. You can comment this line and
+# uncomment the following one if you want to build for 64 bit archs. Bear in mind that
+# to build for 64 bit you have to use Android API 21+ and pjsip >= 2.6.
+# check the build compatibility matrix in the readme and in the issues for further reference.
+# TARGET_ARCHS=("armeabi-v7a" "x86" "arm64-v8a" "x86_64")
+TARGET_ARCHS=("armeabi-v7a" "arm64-v8a")
+
+# Updates and installs all the required packages on the system
+INSTALL_PACKAGES=1
+
+# # # # # # # # # # # # # # #  ANDROID  # # # # # # # # # # # # # # # # # #
+ANDROID_DIR="$WORKING_ROOT_DIR/android"
+ANDROID_SDK_TOOLS_VERSION=r25.2.5
+ANDROID_NDK_VERSION=r21d
+ANDROID_APIS=("28" "29")
+ANDROID_BUILD_TOOLS_VERSION=29.0.3
+ANDROID_TARGET_API=29
+INSTALL_ANDROID=1
+
+# # # # # # # # # # # # # # #  PJSIP  # # # # # # # # # # # # # # # # # # #
+PJSIP_VERSION=2.10
+PJSIP_DIR_NAME="pjproject-$PJSIP_VERSION"
+DOWNLOAD_PJSIP=1
+
+# # # # # # # # # # # # # # #  OPUS  # # # # # # # # # # # # # # # # # # #
+OPUS_VERSION=1.3.1
+OPUS_DIR_NAME="opus-$OPUS_VERSION"
+DOWNLOAD_OPUS=1
+
+# # # # # # # # # # # # # # #  SWIG  # # # # # # # # # # # # # # # # # # #
+SWIG_VERSION=4.0.2
+SWIG_DIR_NAME="swig-$SWIG_VERSION"
+DOWNLOAD_SWIG=1
+
+# # # # # # # # # # # # # # # OPENSSL # # # # # # # # # # # # # # # # # # #
+OPENSSL_VERSION=1.1.1h
+OPENSSL_DIR_NAME="openssl-$OPENSSL_VERSION"
+DOWNLOAD_OPENSSL=1
+
+# # # # # # # # # # # # # # #  OPENH264  # # # # # # # # # # # # # # # # #
+OPENH264_VERSION=2.1.1
+OPENH264_DIR_NAME="openh264-$OPENH264_VERSION"
+DOWNLOAD_OPENH264=1
+
+# # # # # # # # # # # # # # # FUNCTIONS # # # # # # # # # # # # # # # # # #
+function echoc()
+{
+    echo -e "$C""$@""$E"
+}
+
+function echor()
+{
+    echo -e "$R""$@""$E"
+}
+
+function echoy()
+{
+    echo -e "$Y""$@""$E"
+}
+
+function echog()
+{
+    echo -e "$G""$@""$E"
+}
+
+## Seths the paths to the PATH environment variable
+function set_android_paths()
+{
+    echog "Setting paths:"
+    export NDK_TOOLCHAIN_VERSION=clang
+    export PATH="$NDK_TOOLCHAIN_VERSION:$PATH"
+    export ANDROID_NDK_HOME="$ANDROID_DIR/android-ndk-$ANDROID_NDK_VERSION"
+    export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+    export ANDROID_SDK_HOME="$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION"
+    export TOOLCHAIN_PATH="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$HOST_TAG/bin"
+    export PATH="$ANDROID_SDK_HOME:$PATH"
+    export PATH="$ANDROID_SDK_HOME/tools:$PATH"
+    export PATH="$ANDROID_SDK_HOME/build-tools:$PATH"
+    export PATH="$ANDROID_SDK_HOME/build-tools/$ANDROID_BUILD_TOOLS_VERSION:$PATH"
+    export PATH="$ANDROID_NDK_HOME:$PATH"
+    export PATH="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$HOST_TAG/bin:$PATH"
+    export PATH="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$HOST_TAG/sysroot/usr/include:$PATH"
+    echoy "$PATH\n"
+    echoy "$(env | grep ANDROID_NDK_HOME)"
+    echoy "$(env | grep ANDROID_SDK_HOME)"
+    echoy "$(env | grep TOOLCHAIN_PATH)"
+}

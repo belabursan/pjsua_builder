@@ -1,0 +1,35 @@
+#!/bin/bash -e
+# Script for downloading PJSIP
+# 2020-12-11 Bela Bursan
+
+. config
+
+# # # # # # # # # # # # # # #  PJSIP  # # # # # # # # # # # # # # # # # # #
+PJSIP_DOWNLOAD_URL="https://github.com/pjsip/pjproject/archive"
+
+
+## Removes old pjsip directories
+function clean_dirs()
+{
+    if [ -d "$WORKING_ROOT_DIR/$PJSIP_DIR_NAME" ]; then
+        rm -rf "$WORKING_ROOT_DIR/$PJSIP_DIR_NAME"
+    fi
+}
+
+## Download the PJSIP source
+function download_pjsip()
+{
+    PJSIP_FILE_NAME="$PJSIP_VERSION.tar.gz"
+    echoy "\nDownloading PJSIP v${PJSIP_VERSION} ..."
+    cd "$WORKING_ROOT_DIR"
+
+    curl -L -# -o "$PJSIP_FILE_NAME" "$PJSIP_DOWNLOAD_URL/$PJSIP_FILE_NAME" 2>&1
+
+    tar -xzf "$PJSIP_FILE_NAME"
+    rm -rf "$PJSIP_FILE_NAME"
+    echog "PJSIP done"
+}
+
+# # # # # S T A R T # # # 
+clean_dirs
+download_pjsip

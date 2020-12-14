@@ -1,0 +1,34 @@
+#!/bin/bash -e
+# Script for building OpenH264 for Android PJSIP
+# 2020-12-09 Bela Bursan
+
+. config
+
+# # # # # # # # # # # # # # #  OPENH264  # # # # # # # # # # # # # # # # # # #
+OPENH264_DOWNLOAD_URL="https://github.com/cisco/openh264/archive/v$OPENH264_VERSION.tar.gz"
+
+set_android_paths
+
+## debug
+echo -e "\n$R PATH=$PATH$E\n"
+
+OPENH264_PATH="$DOWNLOAD_DIR/$OPENH264_DIR_NAME"
+
+mkdir -p tmp
+ln -sf $ANDROID_NDK_HOME/prebuilt/$HOST_TAG/bin/yasm tmp/nasm
+export PATH=$(pwd)/tmp:$PATH
+
+LIB_PATH="${OPENH264_BUILD_OUT_PATH}/libs"
+LOG_PATH="${OPENH264_BUILD_OUT_PATH}/logs"
+
+echo -e "$Y \nDownloading OpenH264 V${OPENH264_VERSION} ...$E\n"
+cd "$DOWNLOAD_DIR"
+
+curl -L -# -o openh264.tar.gz "$OPENH264_DOWNLOAD_URL" 2>&1
+rm -rf "${OPENH264_DIR_NAME}"
+
+echo -e "$Y OpenH264 downloaded, now extracting...\n$E"
+tar xzf openh264.tar.gz && rm openh264.tar.gz
+cd "${OPENH264_DIR_NAME}"
+make OS=android NDKROOT=$ANDROID_NDK_HOME TARGET=android-29 ARCH=$OPENH264_ARCH NDK_TOOLCHAIN_VERSION=clang
+# # # # # S T A R T # # #

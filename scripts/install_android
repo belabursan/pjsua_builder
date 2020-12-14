@@ -1,0 +1,85 @@
+#!/bin/bash -e
+# Script for installing Android SDK and NDK
+# 2020-12-10 Bela Bursan
+
+. config
+
+# # # # # # # # # # # # # # #  ANDROID  # # # # # # # # # # # # # # # # # # #
+SDK_DOWNLOAD_URL="https://dl.google.com/android/repository/tools_$ANDROID_SDK_TOOLS_VERSION-linux.zip"
+NDK_DOWNLOAD_URL="https://dl.google.com/android/repository/android-ndk-$ANDROID_NDK_VERSION-linux-x86_64.zip"
+
+
+## Clean ndk and sdk directories
+function clean_android()
+{
+    echoy "Cleaning ndk and sdk directories...."
+    if [ -d "$ANDROID_DIR" ]; then
+        rm -rf "$ANDROID_DIR"
+    fi
+
+    if [ -f /tmp/sdk.zip ]; then
+        rm -rf /tmp/sdk.zip
+    fi
+
+    if [ -f /tmp/ndk.zip ]; then
+        rm -rf /tmp/ndk.zip
+    fi
+    echog "Done"
+}
+
+## Download and save SDK to path defined in utils
+function download_sdk()
+{
+    echoy "Downloading android SDK tools v$ANDROID_SDK_TOOLS_VERSION ..."
+    cd /tmp
+    curl -L -# -o sdk.zip "$SDK_DOWNLOAD_URL" 2>&1
+
+    mkdir -p "$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION"
+    unzip sdk.zip -d "$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION"
+    rm -rf sdk.zip
+    echog "Done"
+}
+
+## Download and save NDK to path defined in utils
+function download_ndk()
+{
+    echoy "Downloading Android NDK ${ANDROID_NDK_VERSION} ..."
+    cd /tmp
+    curl -L -# -o ndk.zip "$NDK_DOWNLOAD_URL" 2>&1
+
+    mkdir -p "$ANDROID_DIR"
+    unzip ndk.zip -d "$ANDROID_DIR"
+    rm -rf ndk.zip
+    echog "Done"
+}
+
+## Install the Android apis defined in ANDROID_APIS
+function install_apis()
+{
+    cd "$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION/tools"
+    ALL_SDK=$(./android list sdk --all)
+
+    for api in "${ANDROID_APIS[@]}"
+    do
+        echoy "\n\nDownloading Android API Platform ${api}..."
+        PACKAGE=$(echo "${ALL_SDK}" | grep "API ${api}" | head -n 1 | awk '{print $1}' | cut -d'-' -f 1)
+        echo yes | ./android update sdk --all --filter ${PACKAGE} --no-ui --force
+    done
+
+    PACKAGE=$(echo "${ALL_SDK}" | grep "Android SDK Platform-tools" | head -n 1 | awk '{print $1}' | cut -d'-' -f 1)
+    echo yes | ./android update sdk --all --filter ${PACKAGE} --no-ui --force
+
+    PACKAGE=$(echo "${ALL_SDK}" | grep "Build-tools" | grep "${ANDROID_BUILD_TOOLS_VERSION}" | head -n 1 | awk '{print $1}' | cut -d'-' -f 1)
+    echo yes | ./android update sdk --all --filter ${PACKAGE} --no-ui --force
+    echog "APIs installed successfully"
+}
+
+
+# # # # # S T A R T # # # 
+echoy "Starting to install Android..."
+clean_android
+download_sdk
+download_ndk
+install_apis
+set_android_paths
+echog "\nDone\n"

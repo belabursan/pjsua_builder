@@ -1,0 +1,48 @@
+#!/bin/bash -e
+# Script for building SWIG
+# 2020-12-09 Bela Bursan
+
+. config
+
+# # # # # # # # # # # # # # #  SWIG  # # # # # # # # # # # # # # # # # # #
+SWIG_DOWNLOAD_URL="http://prdownloads.sourceforge.net/swig/swig-$SWIG_VERSION.tar.gz"
+
+## Removes old SWIG directories
+function clean_swig()
+{
+    echoy "Cleaning old SWIG staff"
+    if [ -d "/tmp/$SWIG_DIR_NAME" ]; then
+        rm -rf "/tmp/$SWIG_DIR_NAME"
+    fi
+    sudo apt-get purge -y swig*
+    echog "Done"
+}
+
+## Downloads SWIG
+function download_swig()
+{
+    echoy "Downloading SWIG ${SWIG_VERSION} ..."
+    cd /tmp
+    curl -L -# -o swig.tar.gz "$SWIG_DOWNLOAD_URL" 2>&1
+    tar xzf swig.tar.gz
+    rm -rf swig.tar.gz
+    echog "Done"
+}
+
+
+## Builds SWIG
+function build_swig()
+{
+    echoy "Building SWIG"
+    cd "/tmp/$SWIG_DIR_NAME"
+    ./configure
+    make clean && make && sudo make install
+    cd ..
+    rm -rf "$SWIG_DIR_NAME"
+    echog "Swig built successfully\n"
+}
+
+# # # # # S T A R T # # # 
+clean_swig
+download_swig
+build_swig

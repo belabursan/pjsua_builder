@@ -1,0 +1,25 @@
+#!/bin/bash -e 
+# Script for installing neccessary packages
+# 2020-12-11 Bela Bursan
+
+. config
+
+# # # # # # # # # # # # # # #  PACKAGES  # # # # # # # # # # # # # # # # # # #
+
+## Install neccessary packages
+function install_packages()
+{
+    echoy "Installing packages..."
+    sudo apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false update
+    sudo apt-get purge -y openjdk*
+    sudo apt-get install -y openjdk-8-jdk
+
+    DEPS="nano zip unzip git curl bzip2 gcc g++ binutils make autoconf openssl \
+          libssl-dev ant libopus0 libpcre3 libpcre3-dev build-essential nasm \
+          libc6:i386 libstdc++6:i386 zlib1g:i386"
+    sudo -- sh -c "dpkg --add-architecture i386; apt-get update && apt-get -y upgrade && apt-get install -y ${DEPS}"
+    echog "Packages installed succesfully"
+}
+
+# # # # # S T A R T # # # 
+install_packages
