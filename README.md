@@ -23,11 +23,11 @@ It shall result in a libpjsua.zip file in the working directory.
 
 
 ## Versions
-Openssl    : 1.1.1h
-Openh264   : 2.1.1
-Swig       : 4.0.2
-opus       : 1.3.1
-Pjsip      : 2.10
-Android ndk: r21d
+* Openssl    : 1.1.1h 
+* Openh264   : 2.1.1 
+* Swig       : 4.0.2 
+* Opus       : 1.3.1 
+* Pjsip      : 2.10 
+* Android ndk: r21d 
 
 It is possible to set versions in the scripts/config file, open by running ./configure x
