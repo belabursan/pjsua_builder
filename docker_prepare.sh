@@ -1,11 +1,13 @@
 #!/bin/sh
 # Script for preparing a docker to be able to compile the pjsip-android library
 # 2020 Bela Bursan
-# v0.0.6
+# v0.0.7
 set -e
 
-#docker pull ubuntu:latest
-#docker run -v C:/Users/bub/Desktop/SVEP/work/volume:/home/bin  -it ubuntu bash
+# docker pull ubuntu:latest
+# docker volume create hello
+# docker run -v hello:/home/bin -v C:/Users/bub/Desktop/SVEP/work/volume:/home/win -it ubuntu bash
+
 
 WORKDIR="pjsua-builder"
 NEWGIT="1"

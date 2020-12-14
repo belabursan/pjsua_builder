@@ -1,18 +1,19 @@
 # PJSIP and PJSUA builder for Android
 This repo contains a couple of scripts that downloads all neccessary components and builds the PJSIP/PJSUA lib for Android
 
-## Step 1
-Work in a docker. Open Windows power shell and execute the following commands:
+## Step 1 (only Windows)
+Work in a docker if you are on Windows. Open Windows power shell and execute the following commands:
  - docker pull ubuntu:latest
- - docker run -v [path_to_directory_in_your_home_directory]:/home/bin  -it ubuntu bash
+ - docker volume create pjsip_volume
+ - docker run -v pjsip_volume:/home/bin -v C:/Users/bub/Desktop/SVEP/work/volume:/home/win -it ubuntu bash
 
- Copy the prepare_docker.sh to that directory.
+## Step 1 (MAC and Linux)
+Clone the pjsua-builder git repository
 
-## Step 2
+## Step 2 (only Windows)
 In the console, go to /home/bin and execute the shell script:
  - ./docker_prepare.sh
  (Sometimes you have to set the right permissions: chmod +x docker_prepare.sh)
-
 
 ## Step 3
 Got to "pjsua-builder" directory and run ./configure
