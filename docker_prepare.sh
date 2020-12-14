@@ -69,7 +69,7 @@ if [ -d "$WORKDIR" ]; then
     echo "$Y -Git already cloned$E"
 else
     echo "$C -Cloning git repo$E"
-    git clone https://github.com/belabursan/pjsip-android-builder.git
+    git clone https://github.com/belabursan/pjsua-builder.git
 fi
 
 cd "$WORKDIR"
