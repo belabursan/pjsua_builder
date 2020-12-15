@@ -38,7 +38,8 @@ function set_config_site
     \n#define PJMEDIA_AUDIO_DEV_HAS_ANDROID_JNI 0\
     \n#define PJMEDIA_AUDIO_DEV_HAS_OPENSL 1 \
     \n#define PJSIP_AUTH_AUTO_SEND_NEXT 0\
-    \n#define PJMEDIA_HAS_OPUS_CODEC 1\n" > config_site.h
+    \n#define PJMEDIA_HAS_OPUS_CODEC 1\
+    \n" > config_site.h
 }
 
 
@@ -101,7 +102,11 @@ function build_pjsip
 
 
 # # # # # S T A R T # # #
-set_android_paths_gcc
+if [ "$NDK_GCC" == "1" ]; then
+    set_android_paths_gcc
+else
+    set_android_paths
+fi
 #set_android_paths
 clean_output
 build_pjsip

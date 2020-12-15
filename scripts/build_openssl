@@ -79,6 +79,10 @@ function build_openssl()
 # # # # # S T A R T # # #
 clean_openssl
 setup_openssl
-set_android_paths_gcc
+if [ "$NDK_GCC" == "1" ]; then
+    set_android_paths_gcc
+else
+    set_android_paths
+fi
 download_openssl
 build_openssl
