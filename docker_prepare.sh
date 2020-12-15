@@ -1,7 +1,7 @@
 #!/bin/sh
 # Script for preparing a docker to be able to compile the pjsip-android library
 # 2020 Bela Bursan
-# v0.0.7
+# v0.0.9
 set -e
 
 # docker pull ubuntu:latest
@@ -9,8 +9,9 @@ set -e
 # docker run -v hello:/home/bin -v C:/Users/bub/Desktop/SVEP/work/volume:/home/win -it ubuntu bash
 
 
-WORKDIR="pjsua-builder"
 NEWGIT="1"
+GIT_REPO="pjsua_builder"
+GIT_SITE="https://github.com/belabursan"
 GIT_BRANCH=""
 
 ## Colors
@@ -58,21 +59,21 @@ echo "$Y !DON'T FORGET TO RUN: source ~/.bashrc$E"
 
 ## prepare workdir
 if [ "$NEWGIT" != "" ]; then
-    if [ -d "$WORKDIR" ]; then
-        echo "$C Removing old working directory: $WORKDIR $E"
-        rm -rf "$WORKDIR"
+    if [ -d "$GIT_REPO" ]; then
+        echo "$C Removing old working directory: $GIT_REPO $E"
+        rm -rf "$GIT_REPO"
     fi
 fi
 
 ## clone git
-if [ -d "$WORKDIR" ]; then
+if [ -d "$GIT_REPO" ]; then
     echo "$Y -Git already cloned$E"
 else
     echo "$C -Cloning git repo$E"
-    git clone https://github.com/belabursan/pjsua-builder.git
+    git clone "$GIT_SITE/$GIT_REPO.git"
 fi
 
-cd "$WORKDIR"
+cd "$GIT_REPO"
 if [ "$GIT_BRANCH" != "" ]; then
     echo "$Y Checking out branch: $GIT_BRANCH$E"
     git checkout "$GIT_BRANCH"
@@ -80,7 +81,7 @@ fi
 git pull
 
 # Fix file permissions
-cd "$BASEDIR/scripts"
+cd "scripts"
 chmod +x *
 
-echo "\n\n   ! Now run \e[41msource ~/.bashrc\e[49m and after that got to $WORKDIR and run  \e[41m./prepare-build-system \e[49m\n\n"
+echo "\n\n$Y   ! Now run $R""source ~/.bashrc$Y and after that got to $GIT_REPO and run $R./configure && ./build\n$E"
