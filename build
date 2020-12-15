@@ -4,7 +4,7 @@
 
 . scripts/config
 
-ZIPFILE="libpjsua.zip"
+ZIPFILE="libpjsua-$PJSIP_VERSION.zip"
 PJSIP_PATH="/tmp/pjsip"
 PJSUA_BASE_DIR="${PJSIP_PATH}/pjsip-apps/src/swig"
 
