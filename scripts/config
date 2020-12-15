@@ -34,31 +34,31 @@ HOST_TAG="linux-x86_64"
 TARGET_ARCHS=("armeabi-v7a" "arm64-v8a")
 
 # Updates and installs all the required packages on the system
-INSTALL_PACKAGES=1
+INSTALL_PACKAGES=x
 
 # # # # # # # # # # # # # # #  ANDROID  # # # # # # # # # # # # # # # # # #
 ANDROID_DIR="$WORKING_ROOT_DIR/android"
 ANDROID_SDK_TOOLS_VERSION=r25.2.5
-ANDROID_NDK_VERSION=r21d
+ANDROID_NDK_VERSION=r17c
 ANDROID_APIS=("28" "29")
-ANDROID_BUILD_TOOLS_VERSION=29.0.3
-ANDROID_TARGET_API=29
-INSTALL_ANDROID=1
+ANDROID_BUILD_TOOLS_VERSION=27.0.3
+ANDROID_TARGET_API=28
+INSTALL_ANDROID=x
 
 # # # # # # # # # # # # # # #  PJSIP  # # # # # # # # # # # # # # # # # # #
-PJSIP_VERSION=2.10
+PJSIP_VERSION=2.9
 PJSIP_DIR_NAME="pjproject-$PJSIP_VERSION"
-DOWNLOAD_PJSIP=1
+DOWNLOAD_PJSIP=x
 
 # # # # # # # # # # # # # # #  OPUS  # # # # # # # # # # # # # # # # # # #
 OPUS_VERSION=1.3.1
 OPUS_DIR_NAME="opus-$OPUS_VERSION"
-DOWNLOAD_OPUS=1
+DOWNLOAD_OPUS=x
 
 # # # # # # # # # # # # # # #  SWIG  # # # # # # # # # # # # # # # # # # #
 SWIG_VERSION=4.0.2
 SWIG_DIR_NAME="swig-$SWIG_VERSION"
-DOWNLOAD_SWIG=1
+DOWNLOAD_SWIG=x
 
 # # # # # # # # # # # # # # # OPENSSL # # # # # # # # # # # # # # # # # # #
 OPENSSL_VERSION=1.1.1h
@@ -68,7 +68,7 @@ DOWNLOAD_OPENSSL=1
 # # # # # # # # # # # # # # #  OPENH264  # # # # # # # # # # # # # # # # #
 OPENH264_VERSION=2.1.1
 OPENH264_DIR_NAME="openh264-$OPENH264_VERSION"
-DOWNLOAD_OPENH264=1
+DOWNLOAD_OPENH264=x
 
 # # # # # # # # # # # # # # # FUNCTIONS # # # # # # # # # # # # # # # # # #
 function echoc()
@@ -108,6 +108,33 @@ function set_android_paths()
     export PATH="$ANDROID_NDK_HOME:$PATH"
     export PATH="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$HOST_TAG/bin:$PATH"
     export PATH="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$HOST_TAG/sysroot/usr/include:$PATH"
+    echoy "$PATH\n"
+    echoy "$(env | grep ANDROID_NDK_HOME)"
+    echoy "$(env | grep ANDROID_SDK_HOME)"
+    echoy "$(env | grep TOOLCHAIN_PATH)"
+}
+
+## Seths the paths to the PATH environment variable
+function set_android_paths_gcc()
+{
+    echog "Setting paths:"
+    export NDK_TOOLCHAIN_VERSION=4.9
+    export PATH="$NDK_TOOLCHAIN_VERSION:$PATH"
+    export ANDROID_NDK_HOME="$ANDROID_DIR/android-ndk-$ANDROID_NDK_VERSION"
+    export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+    export ANDROID_SDK_HOME="$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION"
+    export TOOLCHAIN_PATH="$ANDROID_NDK_HOME/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin"
+    export PATH="$ANDROID_SDK_HOME:$PATH"
+    export PATH="$ANDROID_SDK_HOME/tools:$PATH"
+    export PATH="$ANDROID_SDK_HOME/build-tools:$PATH"
+    export PATH="$ANDROID_SDK_HOME/build-tools/$ANDROID_BUILD_TOOLS_VERSION:$PATH"
+    export PATH="$ANDROID_NDK_HOME:$PATH"
+    export PATH="$ANDROID_NDK_HOME/toolchains/sysroot/usr/lib/arm-linux-androideabi/lib:$PATH"
+    export PATH="$ANDROID_NDK_HOME/toolchains/sysroot/usr/lib/armaarch64-linux-android/lib:$PATH"
+    export PATH="$ANDROID_NDK_HOME/toolchains/sysroot/usr/include:$PATH"
+    export PATH="$ANDROID_NDK_HOME/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin:$PATH"
+    export PATH="$ANDROID_NDK_HOME/toolchains/aarch64-linux-android-4.9/prebuilt/linux-x86_64/bin:$PATH"
+
     echoy "$PATH\n"
     echoy "$(env | grep ANDROID_NDK_HOME)"
     echoy "$(env | grep ANDROID_SDK_HOME)"

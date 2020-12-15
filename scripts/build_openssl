@@ -45,7 +45,7 @@ function build_openssl()
     for arch in "${ARCHITECTURES[@]}"
     do
         REAL_ARC="arm64-v8a"
-        if [ "$arch" == "android-arm" ]; then 
+        if [ "$arch" == "android-arm" ]; then
             REAL_ARC="armeabi-v7a"
         fi
 
@@ -55,6 +55,7 @@ function build_openssl()
 
         # B U I L D
         make clean && make 2>&1 > /dev/null
+#        make clean && make
 
         # Move libs to global lib directory
         GLOBAL_LIB="$ROOT_LIB_DIR/$OPENSSL_DIR_NAME/$REAL_ARC/lib"
@@ -78,6 +79,6 @@ function build_openssl()
 # # # # # S T A R T # # #
 clean_openssl
 setup_openssl
-set_android_paths
+set_android_paths_gcc
 download_openssl
 build_openssl

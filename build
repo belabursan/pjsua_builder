@@ -101,7 +101,8 @@ function build_pjsip
 
 
 # # # # # S T A R T # # #
-set_android_paths
+set_android_paths_gcc
+#set_android_paths
 clean_output
 build_pjsip
 rm -rf "$PJSIP_PATH"
