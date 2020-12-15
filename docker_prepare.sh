@@ -1,7 +1,7 @@
 #!/bin/sh
 # Script for preparing a docker to be able to compile the pjsip-android library
 # 2020 Bela Bursan
-# v0.0.9
+# v1.0.0
 set -e
 
 # docker pull ubuntu:latest
@@ -57,7 +57,7 @@ echo "####### A L I A S E S ####### \
 echo "$Y !DON'T FORGET TO RUN: source ~/.bashrc$E"
 
 
-## prepare workdir
+## prepare git
 if [ "$NEWGIT" != "" ]; then
     if [ -d "$GIT_REPO" ]; then
         echo "$C Removing old working directory: $GIT_REPO $E"
@@ -81,6 +81,7 @@ fi
 git pull
 
 # Fix file permissions
+chmod +x configure build
 cd "scripts"
 chmod +x *
 
