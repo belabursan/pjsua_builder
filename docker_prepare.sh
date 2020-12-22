@@ -1,7 +1,7 @@
 #!/bin/sh
 # Script for preparing a docker to be able to compile the pjsip-android library
 # 2020 Bela Bursan
-# v1.0.0
+# v1.0.1
 set -e
 
 # docker pull ubuntu:latest
@@ -11,7 +11,7 @@ set -e
 
 NEWGIT="1"
 GIT_REPO="pjsua_builder"
-GIT_SITE="https://github.com/belabursan"
+GIT_SITE="git@repository.svep.se:002-171"
 GIT_BRANCH=""
 
 ## Colors
@@ -26,12 +26,39 @@ if [ $(pwd) != "/home/bin" ]; then
     exit 1
 fi
 
+if [ $# -gt 0 ]; then
+    if [ "bela" = "$1" ]; then
+        echo "$G Creating gitconfig for $1 \n"
+        echo "\
+ [user]\
+ \n    email = bela.bursan@svep.se\
+ \n    name = Bela Bursan\
+ \n[core]\
+ \n    editor = nano\
+ \n[alias]\
+ \n    s = status\
+ \n    co = checkout\
+ \n    b = branch\
+ \n    tree = log --oneline --decorate --all --graph\
+ \n    com = checkout master\
+ \n" > /root/.gitconfig
+        if [ -d ".ssh" ]; then
+            echo "$Y -Copying .ssh to /root\n"
+            cp -r .ssh /root
+        fi
+    fi
+ fi
+
 ## Install some needed apps
 echo "$C -Updating$E"
 apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false update
 echo "$C -Installing nano$E"
 apt install -y nano
 sed -i 's/# set linenumbers/set linenumbers/g' /etc/nanorc
+sed -i 's/# set tabsize 8/set tabsize 4/g' /etc/nanorc
+
+echo "$C -Installing ssh $E"
+apt install -y ssh
 
 echo "$C -Installing git$E"
 apt install -y git

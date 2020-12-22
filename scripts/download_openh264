@@ -6,6 +6,7 @@
 
 # # # # # # # # # # # # # # #  OPENH264  # # # # # # # # # # # # # # # # # # #
 OPENH264_DOWNLOAD_URL="http://ciscobinary.openh264.org"
+SRC_DOWNLOAD_URL="https://github.com/cisco/openh264/archive/v$OPENH264_VERSION.zip"
 # architecture can be: arm or arm64 (or x86, x64)
 OPENH264_ARCH=("arm" "arm64")
 LIBDIR="$ROOT_LIB_DIR/$OPENH264_DIR_NAME"
@@ -17,15 +18,13 @@ function clean_openh264()
     if [ -d "$LIBDIR" ]; then
         rm -rf "$LIBDIR"
     fi
+    mkdir -p "$LIBDIR"
 }
 
 # Download openh264
 function download_openh264()
 {
     echoy "Downloading openh264-$OPENH264_VERSION-$ARCHITECTURE.so.bz2"
-    if [ ! -d "$LIBDIR" ]; then
-        mkdir -p "$LIBDIR"
-    fi
 
     for arch in "${TARGET_ARCHS[@]}"
     do
@@ -39,6 +38,23 @@ function download_openh264()
     echog "OpenH264 downloaded successfully"
     }
 
+# Download source and create include dir
+function download_src()
+{
+    echoy "Downloading source"
+    cd "$LIBDIR/"
+    mkdir -p "include"
+    cd include
+    mkdir wels
+    curl -L -# $SRC_DOWNLOAD_URL --output src.zip || exit 1
+    unzip src.zip || exit 1
+    cp -r ${ROOT_LIB_DIR}/${OPENH264_DIR_NAME}/include/${OPENH264_DIR_NAME}/codec/api/svc/* wels
+    rm -rf "$OPENH264_DIR_NAME"
+    rm src.zip
+    echog "done"
+}
+
 # # # # # S T A R T # # #
 clean_openh264
 download_openh264
+download_src

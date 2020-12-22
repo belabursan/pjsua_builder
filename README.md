@@ -5,7 +5,12 @@ This repo contains a couple of scripts that downloads all neccessary components 
 Work in a docker if you are on Windows. Open Windows power shell and execute the following commands:
  - docker pull ubuntu:latest
  - docker volume create pjsip_volume
- - docker run -v pjsip_volume:/home/bin -v C:/Users/bub/Desktop/SVEP/work/volume:/home/win -it ubuntu bash
+ - docker run -v pjsip_volume:/home/bin -v C:/Users/bub/Desktop/SVEP/work/volume:/home/win -it ubuntu bash (Make sure that C:/Users/bub/Desktop/SVEP/work/volume:/home/win is a directory you have access to)
+ - in docker console: cd /home/bin
+ - apt update && apt install nano
+ - nano docker_prepare.sh
+ - now copy the content from the git repo to the newly opened file and save
+ - chmod +x docker_prepare.sh
 
 ## Step 1 (MAC and Linux)
 Clone the pjsua-builder git repository

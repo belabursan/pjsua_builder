@@ -11,7 +11,6 @@ G="\033[92m"  # Green color
 
 
 # The git repository shall be saved in this directory
-#WORKING_ROOT_DIR="/Users/buri/Projects/work"
 WORKING_ROOT_DIR="/home/bin"
 
 # The output of the final result
@@ -20,7 +19,7 @@ OUTPUT_DIR="$WORKING_ROOT_DIR/out"
 # Directory where libraries, as openh264 are saved
 ROOT_LIB_DIR="$WORKING_ROOT_DIR/libs"
 
-# Can be: darwin-x86_64, windows-x86_64,linux-x86_64 if you are on those hosts
+# Can be: darwin-x86_64, windows-x86_64, linux-x86_64 if you are on those hosts
 HOST_TAG="linux-x86_64"
 
 # Target architectures that you want to build
@@ -95,6 +94,7 @@ function echog()
 function set_android_paths()
 {
     echog "Setting paths:"
+    export NDK_TOOLCHAIN=clang
     export NDK_TOOLCHAIN_VERSION=clang
     export PATH="$NDK_TOOLCHAIN_VERSION:$PATH"
     export ANDROID_NDK_HOME="$ANDROID_DIR/android-ndk-$ANDROID_NDK_VERSION"
@@ -112,4 +112,20 @@ function set_android_paths()
     echoy "$(env | grep ANDROID_NDK_HOME)"
     echoy "$(env | grep ANDROID_SDK_HOME)"
     echoy "$(env | grep TOOLCHAIN_PATH)"
+}
+
+ ## Checks the return value of the last command and exits in case of failure
+function check_return()
+{
+    if [ $@ = 0 ]; then
+        echor "No arguments for check_return!"
+        return
+    fi
+    RETVAL=$1   
+    if [ $RETVAL -ne 0 ]; then
+        echor "ERROR: Function returned $RETVAL, exiting with failure"
+        echoy "Check logs in $BUILD_LOGS_PATH"
+        exit $RETVAL
+    fi
+    echog "    ...done"
 }
