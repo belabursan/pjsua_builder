@@ -6,6 +6,8 @@
 
 # # # # # # # # # # # # # # #  OPUS  # # # # # # # # # # # # # # # # # # #
 OPUS_DOWNLOAD_URL="https://archive.mozilla.org/pub/opus/opus-$OPUS_VERSION.tar.gz"
+LIB_PATH="libs"
+LOG_PATH="logs"
 
 
 ## Remove unused directories
@@ -14,6 +16,9 @@ function clean_opus()
     if [ -d "/tmp/$OPUS_DIR_NAME" ]; then
         rm -rf "/tmp/$OPUS_DIR_NAME"
     fi
+	if [ -d "$ROOT_LIB_DIR/$OPUS_DIR_NAME" ]; then
+		rm -rf "$ROOT_LIB_DIR/$OPUS_DIR_NAME"
+	fi
 }
 
 ## Download the source and needed staff
@@ -29,6 +34,8 @@ function download_opus()
     echoy "Downloading Android.mk file from PjSip website ..."
     mkdir -p jni
     (cd jni && curl -O https://trac.pjsip.org/repos/raw-attachment/ticket/1904/Android.mk)
+
+    echo "APP_PLATFORM := android-$ANDROID_TARGET_API" | cat - "/tmp/$OPUS_DIR_NAME/jni/Android.mk" > temp && mv temp "/tmp/$OPUS_DIR_NAME/jni/Android.mk"
     echog "Done"
 }
 
@@ -38,13 +45,13 @@ function build_opus()
     echoy "Building Opus $OPUS_VERSION ..."
 
     export APP_PLATFORM="$ANDROID_TARGET_API"
-    LIB_PATH="libs"
-    LOG_PATH="logs"
 
     cd "/tmp/$OPUS_DIR_NAME"
     mkdir -p "${LIB_PATH}"
     mkdir -p "${LOG_PATH}"
 
+    export NDK_TOOLCHAIN=""
+    $ANDROID_NDK_HOME/ndk-build clean
     $ANDROID_NDK_HOME/ndk-build >> "${LOG_PATH}/opus.log" 2>&1
 
     # Copy Files to Build Directory
@@ -61,8 +68,6 @@ function build_opus()
         cd "/tmp/$OPUS_DIR_NAME"
         cp include/* $LIB_PATH/$arch/include/opus
     done
-
-    #rm -rf "/tmp/$OPUS_DIR_NAME"
     echog "Finished building Opus"
 }
 
@@ -75,14 +80,16 @@ function move_libs()
     fi
     cd "/tmp/$OPUS_DIR_NAME/$LIB_PATH"
     mv * "$ROOT_LIB_DIR/$OPUS_DIR_NAME"
-    cd /tmp
-    rm -rf "$OPUS_DIR_NAME"
     echog "Done"
 }
 
 # # # # # S T A R T # # #
+echoy "\nBuilding OPUS\n"
 clean_opus
 set_android_paths
 download_opus
 build_opus
 move_libs
+# Cleaning up
+cd /tmp
+rm -rf "$OPUS_DIR_NAME"
