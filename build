@@ -1,14 +1,15 @@
 #!/bin/bash -e
 # Script for building PJSIP for Android
 # 2020-12-14 Bela Bursan
-#v 0.5
+#v 1.0
 
 . scripts/config
 
 ZIPFILE="libpjsua-$PJSIP_VERSION.zip"
-PJSIP_PATH="/tmp/pjsip"
+PJSIP_PATH="$TEMP_DIR/$PJSIP_DIR_NAME"
 PJSUA_SWIG_DIR="${PJSIP_PATH}/pjsip-apps/src/swig"
 
+BUILD_JAVA_PATH="${OUTPUT_DIR}/java"
 BUILD_LIB_PATH="${OUTPUT_DIR}/lib"
 BUILD_LOGS_PATH="${OUTPUT_DIR}/logs"
 
@@ -25,6 +26,7 @@ function clean_dirs
     fi
 }
 
+
 ## Set configuration in config_site.h
 function set_config_site
 {
@@ -34,7 +36,7 @@ function set_config_site
     echo -e "#define PJ_CONFIG_ANDROID 1\
     \n#include <pj/config_site_sample.h>\
     \n#define PJMEDIA_HAS_VIDEO 1\
-    \n#define PJMEDIA_AUDIO_DEV_HAS_ANDROID_JNI 0\
+    \n#define PJMEDIA_AUDIO_DEV_HAS_ANDROID_JNI 1\
     \n#define PJMEDIA_AUDIO_DEV_HAS_OPENSL 1\
     \n#define PJSIP_AUTH_AUTO_SEND_NEXT 0\
     \n#define PJMEDIA_HAS_OPENH264_CODEC 1\
@@ -42,9 +44,26 @@ function set_config_site
     check_return $?
 }
 
+
+## set user.mak
+function set_user_mak()
+{
+    echoy "Creating and customizing user.mak"
+
+    cd "$PJSIP_PATH"
+    echo -e "# You can create user.mak file in PJ root directory to specify\
+    \n# additional flags to compiler and linker. For example:\
+    \nexport CFLAGS += -Wno-unused-label -Wno-macro-redefined -Wno-writable-strings -Werror\
+    \nexport LDFLAGS += \
+    \nexport LIBS += \"-ldl -lz\"\n" > user.mak
+    check_return $?
+}
+
+
 ## Create working directory
 function create_working_dir()
 {
+    arch=$1
     echoy "Copying clean source to $PJSIP_PATH..."
     if [ -d "$PJSIP_PATH" ]; then
         rm -rf "$PJSIP_PATH"
@@ -57,47 +76,57 @@ function create_working_dir()
     check_return $?
 
     # create lib and log dirs
+    mkdir -p "$BUILD_JAVA_PATH"
     mkdir -p "$BUILD_LIB_PATH"
     mkdir -p "$BUILD_LOGS_PATH"
 
     # copy openh264.so
-    echoy "Copy libopenh264.so..."
-    mkdir -p "$WORKING_ROOT_DIR/$PJSIP_DIR_NAME/pjsip-apps/src/swig/java/android/libs/$arch"
-    cp "$ROOT_LIB_DIR/$OPENH264_DIR_NAME/$arch/lib/libopenh264.so" "$WORKING_ROOT_DIR/$PJSIP_DIR_NAME/pjsip-apps/src/swig/java/android/libs/$arch"
+    echoy "Copy libopenh264.so for $arch ..."
+    mkdir -p "$PJSIP_PATH/pjsip-apps/src/swig/java/android/libs/$arch"
+    cp "$ROOT_LIB_DIR/$OPENH264_DIR_NAME/$arch/lib/libopenh264.so" "$PJSIP_PATH/pjsip-apps/src/swig/java/android/libs/$arch"
     check_return $?
 
     echoy "Copy wels..."  
-    OPENH264_INCLUDE="$ROOT_LIB_DIR/$OPENH264_DIR_NAME/include"
-    cp -r ${OPENH264_INCLUDE}/wels /tmp/pjsip/pjmedia/src/pjmedia-codec/
+    OPENH264_INCLUDE="$ROOT_LIB_DIR/$OPENH264_DIR_NAME/$arch/include/wels"
+    cp -r "${OPENH264_INCLUDE}" "$PJSIP_PATH/pjmedia/src/pjmedia-codec/"
+    cd "${OPENH264_INCLUDE}"
+    cp -r * "$PJSIP_PATH/pjmedia/include/"
+
     check_return $?
 
     # fix comp error
-    cd /tmp/pjsip/pjmedia/src/pjmedia-codec/
-    sed -i 's&#include <wels/codec_api.h>&#include "wels/codec_api.h"&g' openh264.cpp
-    sed -i 's&#include <wels/codec_app_def.h>&#include "wels/codec_app_def.h"&g' openh264.cpp
+    #cd "$PJSIP_PATH/pjmedia/src/pjmedia-codec/"
+    #sed -i 's&#include <wels/codec_api.h>&#include "wels/codec_api.h"&g' openh264.cpp
+    #sed -i 's&#include <wels/codec_app_def.h>&#include "wels/codec_app_def.h"&g' openh264.cpp
 }
+
 
 ## build pjsua
 function build_pjsua()
 {
     arch=$1
 
-    echoy "\nCompile PJSUA for arch:$C $arch $Y..."
+    echoy "\nCreate PJSUA for arch:$C $arch $Y..."
+    echo -e "\n\n-------------------------------- Build PJSUA --------------------------------\n" >>"${BUILD_LOGS_PATH}/$arch.log"
 
+    PJSUA_ROOT_DIR="${PJSUA_SWIG_DIR}/java/android/pjsua2/src/main"
+    PJSUA_SO_PATH="${PJSUA_ROOT_DIR}/jniLibs/$arch/libpjsua2.so"
+    PJSUA_JAVA_PATH="${PJSUA_ROOT_DIR}/java"
+
+    echoy "\nMake clean PJSUA ..."
     cd "${PJSUA_SWIG_DIR}"
-    echoy "\nCleaning PJSUA ..."
     make clean
     check_return $?
 
-    make >>"${BUILD_LOGS_PATH}/$arch.log" 2>&1
+    echoy "\nCompiling PJSUA ..."
+    make 2>&1 | tee -a "${BUILD_LOGS_PATH}/$arch.log"
     check_return $?
 
     echoy "Copying PJSUA .so library to final build directory ..."
-    PJSUA_SO_PATH="${PJSUA_SWIG_DIR}/java/android/app/src/main/jniLibs/$arch/libpjsua2.so"
+
     if [ -f "$PJSUA_SO_PATH" ]; then
         mkdir -p "${BUILD_LIB_PATH}/$arch"
-        mv "${PJSUA_SO_PATH}" "${BUILD_LIB_PATH}/$arch/"
-        check_return $?
+        cp "${PJSUA_SO_PATH}" "${BUILD_LIB_PATH}/$arch/"
     else
         echor "\nERROR: libpjsua2.so not found, has make went wrong?\n"
         exit 1
@@ -108,8 +137,13 @@ function build_pjsua()
         cp "$ROOT_LIB_DIR/$arch/lib/libopenh264.so" "$BUILD_LIB_PATH/$arch"
     fi
 
+    echoy "Copying java files to output dir..."
+    mkdir -p "${BUILD_JAVA_PATH}/$arch"
+    cp -r "${PJSUA_JAVA_PATH}" "${BUILD_JAVA_PATH}/$arch"
+
     echog "Done building pjsua for arch $arch"
 }
+
 
 ## Build pjsip
 function build_pjsip()
@@ -117,32 +151,29 @@ function build_pjsip()
     arch=$1
 
     echoy "\nCompile PJSIP for arch:$C $arch $Y..."
+    echo -e "\n-------------------------------- Build PJSIP --------------------------------\n" >>"${BUILD_LOGS_PATH}/$arch.log"
     cd "$PJSIP_PATH"
 
-    args=("--use-ndk-cflags"
-        "--with-ssl=$ROOT_LIB_DIR/$OPENSSL_DIR_NAME/$arch/$OPENSSL_DIR_NAME"
-        "--with-openh264=$ROOT_LIB_DIR/$OPENH264_DIR_NAME/$arch"
-        "--with-opus=$ROOT_LIB_DIR/$OPUS_DIR_NAME/$arch"
-        "--enable-g729-codec"
-        )
+    args="--with-ssl=${ROOT_LIB_DIR}/${OPENSSL_DIR_NAME}/${arch}/${OPENSSL_DIR_NAME} --with-openh264=${ROOT_LIB_DIR}/${OPENH264_DIR_NAME}/${arch} --with-opus=${ROOT_LIB_DIR}/${OPUS_DIR_NAME}/${arch}"
+    echoy "args--> ${args}"
 
     # configure android
-    APP_PLATFORM=android-"$ANDROID_TARGET_API" TARGET_ABI=$arch ./configure-android "${args[@]}" >> "${BUILD_LOGS_PATH}/$arch.log" 2>&1
-
-    echoy "Running make dep..."
-    make dep >>"${BUILD_LOGS_PATH}/$arch.log" 2>&1
-    check_return $?
+    APP_PLATFORM=android-"$ANDROID_TARGET_API" TARGET_ABI=$arch ./configure-android "${args}" 2>&1 | tee -a "${BUILD_LOGS_PATH}/$arch.log"
 
     # make clean and make
     echoy "Cleaning pjsip-apps/src/pjsua/android/jni"
-    cd "$PJSIP_PATH/pjsip-apps/src/pjsua/android/jni" && make clean >>"${BUILD_LOGS_PATH}/$arch.log" 2>&1
+    cd "$PJSIP_PATH/pjsip-apps/src/pjsua/android/jni" && make clean 2>&1 | tee -a "${BUILD_LOGS_PATH}/$arch.log"
     echoy "Cleaning pjsip-apps/src/swig"
-    cd "$PJSIP_PATH/pjsip-apps/src/swig" && make clean >>"${BUILD_LOGS_PATH}/$arch.log" 2>&1
+    cd "$PJSIP_PATH/pjsip-apps/src/swig" && make clean 2>&1 | tee -a "${BUILD_LOGS_PATH}/$arch.log"
     echoy "Cleaning ..."
-    cd "$PJSIP_PATH" && make clean >>"${BUILD_LOGS_PATH}/$arch.log" 2>&1
+    cd "$PJSIP_PATH" && make clean 2>&1 | tee -a "${BUILD_LOGS_PATH}/$arch.log"
+
+    echoy "Running make dep..."
+    make dep 2>&1 | tee -a "${BUILD_LOGS_PATH}/$arch.log"
+    check_return $?
 
     echoy "Running make..."
-    make >>"${BUILD_LOGS_PATH}/$arch.log" 2>&1
+    make 2>&1 | tee -a "${BUILD_LOGS_PATH}/$arch.log"
     check_return $?
     echog "Done building pjsip for arch $arch"
 }
@@ -154,27 +185,13 @@ function build()
     for arch in "${TARGET_ARCHS[@]}"
     do
         # copy pjsip src to working dir and set config_site
-        create_working_dir
+        create_working_dir $arch
         set_config_site
+        set_user_mak
         build_pjsip "$arch"
         check_return $?
-        #build_pjsua "$arch"
+        build_pjsua "$arch"
     done
-    cp -r "$PJSUA_SWIG_DIR/java/android/app/src/main/java/" "$OUTPUT_DIR"
-}
-
-## Cleans the working directory
-function check_clean()
-{
-    if [ $# -gt 0 ] && [ "$1" = "clean" ]; then
-       echoy "Cleaning working directory..."
-       rm -rf /tmp/op*
-       rm -rf /tpm/pj*
-       rm -rf "$OUTPUT_DIR"
-       rm "$WORKING_ROOT_DIR/$ZIPFILE"
-       echog "Done"
-       exit 0
-    fi
 }
 
 
@@ -186,4 +203,4 @@ rm -rf "$PJSIP_PATH"
 cd "$WORKING_ROOT_DIR"
 zip -r "$ZIPFILE" out
 
-echog "ALL FINISHED! See: $OUTPUT_DIR"
+echog "\nALL FINISHED! See: $OUTPUT_DIR\n"

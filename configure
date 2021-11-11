@@ -11,48 +11,54 @@
 function run_configure()
 {
     cd scripts
+    ARG="$1"
 
-    if [ "$INSTALL_PACKAGES" == "1" ]
-    then
-        ./install_packages
+    if [ "$INSTALL_PACKAGES" == "1" ]; then
+        ./install_packages $ARG
     fi
 
-    if [ "$INSTALL_ANDROID" == "1" ]
-    then
-        ./install_android
+    if [ "$INSTALL_ANDROID" == "1" ]; then
+        ./install_android $ARG
     fi
 
-    if [ "$DOWNLOAD_PJSIP" == "1" ]
-    then
-        ./download_pjsip
+    if [ "$DOWNLOAD_PJSIP" == "1" ]; then
+        ./download_pjsip $ARG
     fi
 
-    if [ "$DOWNLOAD_SWIG" == "1" ]
-    then
-        ./build_swig
+    if [ "$DOWNLOAD_SWIG" == "1" ]; then
+        ./build_swig $ARG
     fi
 
-    if [ "$DOWNLOAD_OPENSSL" == "1" ]
-    then
-        ./build_openssl
+    if [ "$DOWNLOAD_OPENSSL" == "1" ]; then
+        ./build_openssl $ARG
     fi
 
-    if [ "$DOWNLOAD_OPENH264" == "1" ]
-    then
-        ./download_openh264
+    if [ "$DOWNLOAD_OPENH264" == "1" ]; then
+        ./download_openh264 $ARG
     fi
 
-    if [ "$DOWNLOAD_OPUS" == "1" ]
-    then
-        ./build_opus
+    if [ "$DOWNLOAD_OPUS" == "1" ]; then
+        ./build_opus $ARG
     fi
 }
 
 # # # # # S T A R T # # #
 if [ "$#" != "0" ]; then
-    nano scripts/config
-    exit 0
+    if [ "$1" != "-f" ]; then
+        nano scripts/config
+        exit 0
+    fi
 fi
 
-run_configure
+if [ ! -d "$TEMP_DIR" ]; then
+  mkdir -p $TEMP_DIR
+fi
+
+if [ "$WORKING_ROOT_DIR" == "" ]; then
+    echor "\nERROR: You must set the working directory!!"
+    echoy " -> run \"./configure x\" and set WORKING_ROOT_DIR at the top\n"
+    exit 1
+fi
+
+run_configure $1
 echog "\nThe build system is ready! Run: ./build to build PJSIP\n"

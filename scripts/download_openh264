@@ -4,57 +4,72 @@
 
 . config
 
+
 # # # # # # # # # # # # # # #  OPENH264  # # # # # # # # # # # # # # # # # # #
 OPENH264_DOWNLOAD_URL="http://ciscobinary.openh264.org"
 SRC_DOWNLOAD_URL="https://github.com/cisco/openh264/archive/v$OPENH264_VERSION.zip"
-# architecture can be: arm or arm64 (or x86, x64)
-OPENH264_ARCH=("arm" "arm64")
 LIBDIR="$ROOT_LIB_DIR/$OPENH264_DIR_NAME"
+
+declare -A OHARCHES=(
+    ["armeabi-v7a"]="android-arm"
+    ["arm64-v8a"]="android-arm64"
+    ["x86"]="linux32.5"
+    ["x86_64"]="linux64.5"
+)
 
 
 ## Cleans openh264 stuff
 function clean_openh264()
 {
-    if [ -d "$LIBDIR" ]; then
-        rm -rf "$LIBDIR"
+    if [ "$1" == "-f" ]; then
+        if [ -d "$LIBDIR" ]; then
+            rm -rf "$LIBDIR"
+        fi
     fi
-    mkdir -p "$LIBDIR"
 }
 
-# Download openh264
+
+## Download openh264
 function download_openh264()
 {
-    echoy "Downloading openh264-$OPENH264_VERSION-$ARCHITECTURE.so.bz2"
+    if [ -d "${ROOT_LIB_DIR}/${OPENH264_DIR_NAME}" ]; then
+        echoy "Openh264 v$OPENH264_VERSION already exist"
+    else
+        mkdir -p "$LIBDIR"
 
-    for arch in "${TARGET_ARCHS[@]}"
-    do
-        cd "$LIBDIR"
-        mkdir -p "$arch/lib"
-        cd "$arch/lib"
-        curl -L -# -o libopenh264.so.bz2 "$OPENH264_DOWNLOAD_URL/libopenh264-$OPENH264_VERSION-android-$OPENH264_ARCH.so.bz2" 2>&1
-        bzip2 -d libopenh264.so.bz2
-    done
+        for arch in "${TARGET_ARCHS[@]}"
+        do
+            echoy "Downloading openh264-$OPENH264_VERSION-${OHARCHES[$arch]}.so.bz2"
+            cd "$LIBDIR"
+            mkdir -p "$LIBDIR/$arch/lib"
+            download_src $arch
+            cd "$LIBDIR/$arch/lib"
+            curl -L -# -o libopenh264.so.bz2 "$OPENH264_DOWNLOAD_URL/libopenh264-$OPENH264_VERSION-${OHARCHES[$arch]}.so.bz2" 2>&1
+            bzip2 -d libopenh264.so.bz2
+        done
 
-    echog "OpenH264 downloaded successfully"
-    }
+        echog "OpenH264 downloaded successfully"
+    fi
+}
 
-# Download source and create include dir
+
+## Download source and create include dir
 function download_src()
 {
+    archd=$1
     echoy "Downloading source"
-    cd "$LIBDIR/"
-    mkdir -p "include"
-    cd include
-    mkdir wels
+    mkdir -p "$LIBDIR/$archd/include/wels"
+    cd "$LIBDIR/$archd/include"
+
     curl -L -# $SRC_DOWNLOAD_URL --output src.zip || exit 1
     unzip src.zip || exit 1
-    cp -r ${ROOT_LIB_DIR}/${OPENH264_DIR_NAME}/include/${OPENH264_DIR_NAME}/codec/api/svc/* wels
+    cp -r ${ROOT_LIB_DIR}/${OPENH264_DIR_NAME}/$archd/include/${OPENH264_DIR_NAME}/codec/api/svc/* wels
     rm -rf "$OPENH264_DIR_NAME"
     rm src.zip
     echog "done"
 }
 
+
 # # # # # S T A R T # # #
-clean_openh264
+clean_openh264 $1
 download_openh264
-download_src

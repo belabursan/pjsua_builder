@@ -10,19 +10,21 @@ SWIG_DOWNLOAD_URL="http://prdownloads.sourceforge.net/swig/swig-$SWIG_VERSION.ta
 ## Removes old SWIG directories
 function clean_swig()
 {
-    echoy "Cleaning old SWIG staff"
-    if [ -d "/tmp/$SWIG_DIR_NAME" ]; then
-        rm -rf "/tmp/$SWIG_DIR_NAME"
+    if [ "$1" == "-f" ]; then
+        echoy "Cleaning old SWIG staff"
+        if [ -d "$TEMP_DIR/$SWIG_DIR_NAME" ]; then
+            rm -rf "$TEMP_DIR/$SWIG_DIR_NAME"
+        fi
+        sudo apt-get purge -y swig*
+        echog "Done"
     fi
-    sudo apt-get purge -y swig*
-    echog "Done"
 }
 
 ## Downloads SWIG
 function download_swig()
 {
     echoy "Downloading SWIG ${SWIG_VERSION} ..."
-    cd /tmp
+    cd "$TEMP_DIR"
     curl -L -# -o swig.tar.gz "$SWIG_DOWNLOAD_URL" 2>&1
     tar xzf swig.tar.gz
     rm -rf swig.tar.gz
@@ -34,7 +36,7 @@ function download_swig()
 function build_swig()
 {
     echoy "Building SWIG"
-    cd "/tmp/$SWIG_DIR_NAME"
+    cd "$TEMP_DIR/$SWIG_DIR_NAME"
     ./configure
     make clean && make && sudo make install
     cd ..
@@ -42,7 +44,14 @@ function build_swig()
     echog "Swig built successfully\n"
 }
 
+
 # # # # # S T A R T # # # 
-clean_swig
-download_swig
-build_swig
+clean_swig $1
+swig -version
+if [ "$?" == "0" ]; then
+    #swig installed
+    echoy  "Swig already installed"
+else
+    download_swig
+    build_swig
+fi

@@ -6,83 +6,102 @@
 
 # # # # # # # # # # # # # # #  OPUS  # # # # # # # # # # # # # # # # # # #
 OPUS_DOWNLOAD_URL="https://archive.mozilla.org/pub/opus/opus-$OPUS_VERSION.tar.gz"
+LIB_PATH="libs"
+LOG_PATH="logs"
 
 
 ## Remove unused directories
 function clean_opus()
 {
-    if [ -d "/tmp/$OPUS_DIR_NAME" ]; then
-        rm -rf "/tmp/$OPUS_DIR_NAME"
+    if [ "$1" == "-f" ]; then
+        if [ -d "$TEMP_DIR/$OPUS_DIR_NAME" ]; then
+            rm -rf "$TEMP_DIR/$OPUS_DIR_NAME"
+        fi
+        if [ -d "$ROOT_LIB_DIR/$OPUS_DIR_NAME" ]; then
+            rm -rf "$ROOT_LIB_DIR/$OPUS_DIR_NAME"
+        fi
     fi
 }
+
 
 ## Download the source and needed staff
 function download_opus()
 {
-    echoy "Downloading Opus ${OPUS_VERSION} ..."
-    cd /tmp
-    curl -L -# -o opus.tar.gz "$OPUS_DOWNLOAD_URL" 2>&1
-    tar xzf opus.tar.gz && rm -rf opus.tar.gz
+    if [ -d "$ROOT_LIB_DIR/$OPUS_DIR_NAME" ]; then
+        echoy "Opus ${OPUS_VERSION} already exists"
+    else
+        echoy "Downloading Opus ${OPUS_VERSION} ..."
+        cd $TEMP_DIR
+        curl -L -# -o opus.tar.gz "$OPUS_DOWNLOAD_URL" 2>&1
+        tar xzf opus.tar.gz && rm -rf opus.tar.gz
 
-    cd "$OPUS_DIR_NAME"
+        cd "$OPUS_DIR_NAME"
 
-    echoy "Downloading Android.mk file from PjSip website ..."
-    mkdir -p jni
-    (cd jni && curl -O https://trac.pjsip.org/repos/raw-attachment/ticket/1904/Android.mk)
-    echog "Done"
+        echoy "Downloading Android.mk file from PjSip website ..."
+        mkdir -p jni
+        (cd jni && curl -O https://trac.pjsip.org/repos/raw-attachment/ticket/1904/Android.mk)
+
+        echo "APP_PLATFORM := android-$ANDROID_TARGET_API" | cat - "$TEMP_DIR/$OPUS_DIR_NAME/jni/Android.mk" > temp && mv temp "$TEMP_DIR/$OPUS_DIR_NAME/jni/Android.mk"
+        echog "Done"
+    fi
 }
+
 
 ## Build opus
 function build_opus()
 {
-    echoy "Building Opus $OPUS_VERSION ..."
+    if [ ! -d "$ROOT_LIB_DIR/$OPUS_DIR_NAME" ]; then
+        echoy "Building Opus $OPUS_VERSION ..."
+        set_android_paths
+        export APP_PLATFORM="$ANDROID_TARGET_API"
 
-    export APP_PLATFORM="$ANDROID_TARGET_API"
-    LIB_PATH="libs"
-    LOG_PATH="logs"
+        cd "$TEMP_DIR/$OPUS_DIR_NAME"
+        mkdir -p "${LIB_PATH}"
+        mkdir -p "${LOG_PATH}"
 
-    cd "/tmp/$OPUS_DIR_NAME"
-    mkdir -p "${LIB_PATH}"
-    mkdir -p "${LOG_PATH}"
+        export NDK_TOOLCHAIN=""
+        $ANDROID_NDK_HOME/ndk-build clean
+        $ANDROID_NDK_HOME/ndk-build | tee -a "${LOG_PATH}/opus.log" 2>&1
 
-    $ANDROID_NDK_HOME/ndk-build >> "${LOG_PATH}/opus.log" 2>&1
+        # Copy Files to Build Directory
+        echo "Copying build file in Opus Build directory ..."
+        cp -r obj/local/* $LIB_PATH
 
-    # Copy Files to Build Directory
-    echo "Copying build file in Opus Build directory ..."
-    cp -r obj/local/* $LIB_PATH
+        for arch in "${TARGET_ARCHS[@]}"
+        do
+            echoy "Copying Opus file for target arch $arch ..."
+            cd $LIB_PATH/$arch
+            mkdir -p lib
+            mv `ls | grep -w -v lib` lib
+            mkdir -p include/opus
+            cd "$TEMP_DIR/$OPUS_DIR_NAME"
+            cp include/* $LIB_PATH/$arch/include/opus
+        done
 
-    for arch in "${TARGET_ARCHS[@]}"
-    do
-        echoy "Copying Opus file for target arch $arch ..."
-        cd $LIB_PATH/$arch
-        mkdir -p lib
-        mv `ls | grep -w -v lib` lib
-        mkdir -p include/opus
-        cd "/tmp/$OPUS_DIR_NAME"
-        cp include/* $LIB_PATH/$arch/include/opus
-    done
-
-    #rm -rf "/tmp/$OPUS_DIR_NAME"
-    echog "Finished building Opus"
+        mkdir -p "$ROOT_LIB_DIR/$OPUS_DIR_NAME"
+        echog "Finished building Opus"
+    fi
 }
+
 
 ## Moves the compiled libraries to root dir
 function move_libs()
 {
-    echoy "Moving libs to global lib- directory"
-    if [ ! -f "$ROOT_LIB_DIR/$OPUS_DIR_NAME" ]; then
-        mkdir -p "$ROOT_LIB_DIR/$OPUS_DIR_NAME"
+    if [ -d "$TEMP_DIR/$OPUS_DIR_NAME/$LIB_PATH" ]; then
+        echoy "Moving libs to global lib- directory"
+        cd "$TEMP_DIR/$OPUS_DIR_NAME/$LIB_PATH"
+        mv * "$ROOT_LIB_DIR/$OPUS_DIR_NAME"
+        echog "Done"
     fi
-    cd "/tmp/$OPUS_DIR_NAME/$LIB_PATH"
-    mv * "$ROOT_LIB_DIR/$OPUS_DIR_NAME"
-    cd /tmp
-    rm -rf "$OPUS_DIR_NAME"
-    echog "Done"
 }
 
+
 # # # # # S T A R T # # #
-clean_opus
-set_android_paths
+echoy "\nBuilding OPUS\n"
+clean_opus $1
 download_opus
 build_opus
 move_libs
+# Cleaning up
+cd "$TEMP_DIR"
+rm -rf "$OPUS_DIR_NAME"

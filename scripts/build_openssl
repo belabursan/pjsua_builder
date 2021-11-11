@@ -7,35 +7,39 @@
 # # # # # # # # # # # # # # #  OPENSSL  # # # # # # # # # # # # # # # # # # #
 OPENSSL_DOWNLOAD_URL="https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz"
 # Possible values: android-arm, android-arm64, android-x86, android-x86 etc
-ARCHITECTURES=("android-arm" "android-arm64")
-
+declare -A OSSL_ARCHES=(
+    ["armeabi-v7a"]="android-arm"
+    ["arm64-v8a"]="android-arm64"
+    ["x86"]="linux32.5"
+    ["x86_64"]="linux64.5"
+)
 
 
 ## Cleans old stuff
 function clean_openssl()
 {
-    cd /tmp
-    if [ -d  "/tmp/$OPENSSL_DIR_NAME" ]; then
-      rm -rf "/tmp/$OPENSSL_DIR_NAME"
+    if [ "$1" == "-f" ]; then
+        if [ -d  "$TEMP_DIR/$OPENSSL_DIR_NAME" ]; then
+        rm -rf "$TEMP_DIR/$OPENSSL_DIR_NAME"
+        fi
+
+        if [ -d "$ROOT_LIB_DIR/$OPENSSL_DIR_NAME" ]; then
+            rm -rf "$ROOT_LIB_DIR/$OPENSSL_DIR_NAME"
+        fi
     fi
 }
 
-## Creates neccessary directories
-function setup_openssl()
-{
-    if [ ! -d "$ROOT_LIB_DIR/$OPENSSL_DIR_NAME" ]; then
-        mkdir -p "$ROOT_LIB_DIR/$OPENSSL_DIR_NAME"
-    fi
-}
 
 ## Downloads the openssl source
 function download_openssl()
 {
-    echoy "Downloading OpenSSL ${OPENSSL_VERSION} ..."
-    cd /tmp
-    curl -L -# -o openssl.tar.gz "$OPENSSL_DOWNLOAD_URL" 2>&1
-    tar xzf openssl.tar.gz && rm -rf openssl.tar.gz
-    echog "Done"
+    if [ ! -d "$ROOT_LIB_DIR/$OPENSSL_DIR_NAME" ]; then
+        echoy "Downloading OpenSSL ${OPENSSL_VERSION} ..."
+        cd "$TEMP_DIR"
+        curl -L -# -o openssl.tar.gz "$OPENSSL_DOWNLOAD_URL" 2>&1
+        tar xzf openssl.tar.gz && rm -rf openssl.tar.gz
+        echog "Done"
+    fi
 }
 
 
@@ -43,7 +47,7 @@ function download_openssl()
 function copy_lib()
 {
     arch="$1"
-    cd /tmp
+    cd "$TEMP_DIR"
     GLOBAL_LIB="$ROOT_LIB_DIR/$OPENSSL_DIR_NAME/$arch"
     mkdir -p $GLOBAL_LIB
     cp -r "$OPENSSL_DIR_NAME" "$GLOBAL_LIB"
@@ -56,32 +60,33 @@ function copy_lib()
 ## Build the lib
 function build_openssl()
 {
-    CC=${NDK_TOOLCHAIN_VERSION}
+    if [ ! -d "$ROOT_LIB_DIR/$OPENSSL_DIR_NAME" ]; then
+        set_android_paths
+        mkdir -p "$ROOT_LIB_DIR/$OPENSSL_DIR_NAME"
+        CC=${NDK_TOOLCHAIN_VERSION}
 
-    for arch in "${ARCHITECTURES[@]}"
-    do
-        REAL_ARCH="arm64-v8a"
-        if [ "$arch" == "android-arm" ]; then 
-            REAL_ARCH="armeabi-v7a"
-        fi
+        for arch in "${TARGET_ARCHS[@]}"
+        do
+            cd "$TEMP_DIR/$OPENSSL_DIR_NAME"
 
-	    cd "/tmp/$OPENSSL_DIR_NAME"
+            echoy "\nCompiling openssl for arch: $arch"
+            # C O N F I G U R E
+            ./Configure ${OSSL_ARCHES[$arch]} -D__ANDROID_API__=$ANDROID_TARGET_API
 
-        echoy "\nCompiling openssl for arch: $REAL_ARCH"
-        # C O N F I G U R E
-        ./Configure ${arch} -D__ANDROID_API__=$ANDROID_TARGET_API
-
-        # B U I L D
-        make clean && make 2>&1 > /dev/null
-        copy_lib "$REAL_ARCH"
-    done
-    echog "\nOpenSSL built successfully\n"
+            # B U I L D
+            make clean && make 2>&1 > /dev/null
+            copy_lib "$arch"
+        done
+        echog "\nOpenSSL built successfully\n"
+    fi
 }
 
+
 # # # # # S T A R T # # #
-clean_openssl
-setup_openssl
-set_android_paths
+clean_openssl $1
 download_openssl
 build_openssl
-clean_openssl
+
+if [ -d  "$TEMP_DIR/$OPENSSL_DIR_NAME" ]; then
+    rm -rf "$TEMP_DIR/$OPENSSL_DIR_NAME"
+fi

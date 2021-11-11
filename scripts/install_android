@@ -9,49 +9,67 @@ SDK_DOWNLOAD_URL="https://dl.google.com/android/repository/tools_$ANDROID_SDK_TO
 NDK_DOWNLOAD_URL="https://dl.google.com/android/repository/android-ndk-$ANDROID_NDK_VERSION-linux-x86_64.zip"
 
 
+
 ## Clean ndk and sdk directories
 function clean_android()
 {
-    echoy "Cleaning ndk and sdk directories...."
-    if [ -d "$ANDROID_DIR" ]; then
-        rm -rf "$ANDROID_DIR"
+    echoy "Cleaning ndk($ANDROID_NDK_VERSION) and sdk($ANDROID_SDK_TOOLS_VERSION) directories...."
+    if [ -d "$ANDROID_DIR/android-ndk-$ANDROID_NDK_VERSION" ]; then
+        rm -rf "$ANDROID_DIR/android-ndk-$ANDROID_NDK_VERSION"
     fi
 
-    if [ -f /tmp/sdk.zip ]; then
-        rm -rf /tmp/sdk.zip
+    if [ -d "$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION" ]; then
+        rm -rf "$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION"
     fi
 
-    if [ -f /tmp/ndk.zip ]; then
-        rm -rf /tmp/ndk.zip
+    if [ -f $TEMP_DIR/sdk.zip ]; then
+        rm -rf $TEMP_DIR/sdk.zip
+    fi
+
+    if [ -f $TEMP_DIR/ndk.zip ]; then
+        rm -rf $TEMP_DIR/ndk.zip
     fi
     echog "Done"
 }
+
 
 ## Download and save SDK to path defined in utils
 function download_sdk()
 {
     echoy "Downloading android SDK tools v$ANDROID_SDK_TOOLS_VERSION ..."
-    cd /tmp
-    curl -L -# -o sdk.zip "$SDK_DOWNLOAD_URL" 2>&1
+    if [ -d "$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION" ]; then
+        echoy "SDK v$ANDROID_SDK_TOOLS_VERSION already exist"
+        return 0
+    else
+        cd $TEMP_DIR
+        curl -L -# -o sdk.zip "$SDK_DOWNLOAD_URL" 2>&1
 
-    mkdir -p "$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION"
-    unzip sdk.zip -d "$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION"
-    rm -rf sdk.zip
-    echog "Done"
+        mkdir -p "$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION"
+        unzip sdk.zip -d "$ANDROID_DIR/android-sdk-$ANDROID_SDK_TOOLS_VERSION"
+        rm -rf sdk.zip
+        check_return $?
+    fi
 }
+
 
 ## Download and save NDK to path defined in utils
 function download_ndk()
 {
     echoy "Downloading Android NDK ${ANDROID_NDK_VERSION} ..."
-    cd /tmp
-    curl -L -# -o ndk.zip "$NDK_DOWNLOAD_URL" 2>&1
+    if [ -d "$ANDROID_DIR/android-ndk-$ANDROID_NDK_VERSION" ]; then
+        echoy "NDK ${ANDROID_NDK_VERSION} already exists"
+        return 0
+    else
+        cd $TEMP_DIR
+        curl -L -# -o ndk.zip "$NDK_DOWNLOAD_URL" 2>&1
 
-    mkdir -p "$ANDROID_DIR"
-    unzip ndk.zip -d "$ANDROID_DIR"
-    rm -rf ndk.zip
-    echog "Done"
+        mkdir -p "$ANDROID_DIR"
+        unzip ndk.zip -d "$ANDROID_DIR"
+        rm -rf ndk.zip
+        check_return $?
+    fi
 }
+
 
 ## Install the Android apis defined in ANDROID_APIS
 function install_apis()
@@ -75,11 +93,33 @@ function install_apis()
 }
 
 
-# # # # # S T A R T # # # 
-echoy "Starting to install Android..."
-clean_android
+## Removes all Android SDK's and NDK's
+function clean_android_all()
+{
+	echoy "Cleaning all android directories..."
+    if [ -d "$ANDROID_DIR" ]; then
+        rm -rf "$ANDROID_DIR"
+    fi
+
+    if [ -f "$TEMP_DIR/sdk.zip" ]; then
+        rm -rf "$TEMP_DIR/sdk.zip"
+    fi
+
+    if [ -f "$TEMP_DIR/ndk.zip" ]; then
+        rm -rf "$TEMP_DIR/ndk.zip"
+    fi
+	echog "Done cleaning Android\n"
+}
+
+
+
+# # # # # S T A R T # # #
+echoy "Starting to install Android NDK and SDK..."
+if [ "$1" == "-f" ]; then
+    clean_android
+fi
 download_sdk
 download_ndk
 install_apis
 set_android_paths
-echog "\nDone\n"
+echog "\nDone installing Android\n"

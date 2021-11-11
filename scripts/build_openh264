@@ -2,93 +2,109 @@
 # Script for building OpenH264 for Android PJSIP
 # 2020-12-09 Bela Bursan
 
+# NOTE: never get this to work for newer android ndk and newer oh, use the download script instead
+
 . config
 
 # # # # # # # # # # # # # # #  OPENH264  # # # # # # # # # # # # # # # # # # #
 OPENH264_DOWNLOAD_URL="https://github.com/cisco/openh264/archive/v$OPENH264_VERSION.tar.gz"
+TOOLCHAIN="clang"
 
 
 ## Cleans openh264 stuf
-function clean_openh()
+function clean_oh()
 {
-    echoy "Cleaning openh264 stuff"
-    if [ -d "$ROOT_LIB_DIR/$OPENH264_DIR_NAME" ]; then
-        rm -rf "$ROOT_LIB_DIR/$OPENH264_DIR_NAME"
+    if [ "$1" == "-f" ]; then
+        echoy "Cleaning openh264 directories..."
+        if [ -d "$ROOT_LIB_DIR/$OPENH264_DIR_NAME" ]; then
+            rm -rf "$ROOT_LIB_DIR/$OPENH264_DIR_NAME"
+        fi
+        if [ -d "$TEMP_DIR/$OPENH264_DIR_NAME" ]; then
+            rm -rf "$TEMP_DIR/$OPENH264_DIR_NAME"
+        fi
+        if [ -f "$TEMP_DIR/openh264.tar.gz" ]; then
+            rm "$TEMP_DIR/openh264.tar.gz"
+        fi
+        if [ -d "$TEMP_DIR/wels" ]; then
+            rm -rf "$TEMP_DIR/wels"
+        fi
+        echog "done"
     fi
-    if [ -d "/tmp/$OPENH264_DIR_NAME" ]; then
-        rm -rf "/tmp/$OPENH264_DIR_NAME"
-    fi
-    if [ -f "/tmp/openh264.tar.gz" ]; then
-        rm "/tmp/openh264.tar.gz"
-    fi
-    if [ -d /tmp/wels ]; then
-        rm -rf /tmp/wels
-    fi
-    echog "done"
 }
+
 
 ## Download needed source
 function download_oh()
 {
-    echoy "Downloading OpenH264 V${OPENH264_VERSION} ..."
-    cd /tmp
-    curl -L -# -o openh264.tar.gz "$OPENH264_DOWNLOAD_URL" 2>&1
-    check_return $?
+    if [ ! -d "$ROOT_LIB_DIR/$OPENH264_DIR_NAME" ]; then
+        echoy "Downloading OpenH264 V${OPENH264_VERSION} ..."
+        cd "$TEMP_DIR"
+        curl -L -# -o openh264.tar.gz "$OPENH264_DOWNLOAD_URL" 2>&1
+        check_return $?
+    fi
+    return 0
 }
+
 
 ## Build for arch
 function do_build()
 {
-    cd "/tmp/$OPENH264_DIR_NAME"
+    echoy "\nBuilding Openh264 arch: $1\n"
 
-    TOOLCHAIN=""
+    # set dependencies
+    ln -sf "$ANDROID_NDK_HOME/prebuilt/$HOST_TAG/bin/yasm" "$TEMP_DIR/$OPENH264_DIR_NAME/include/wels/nasm"
+    export PATH="$TEMP_DIR/$OPENH264_DIR_NAME/include/wels:$PATH"
+
+    cd "$TEMP_DIR/$OPENH264_DIR_NAME"
+    sed -i 's/TOOLCHAIN_NAME = $(shell NDK_TOOLCHAIN_VERSION= /TOOLCHAIN_NAME = $(shell NDK_TOOLCHAIN_VERSION=clang /g' build/platform-android.mk
+    sed -i 's/libunwind.a/libunwind.a -nostdlib++/g' build/platform-android.mk
+    sed -i 's/-nostdlib++ -nostdlib++/-nostdlib++/g' build/platform-android.mk
+
     REAL_ARCH=""
     if [ "$1" == "arm64-v8a" ]; then
-        TOOLCHAIN="aarch64-linux-android-clang"
         REAL_ARCH="arm64"
-        export PATH="$ANDROID_DIR/android-ndk-$ANDROID_NDK_VERSION/sysroot/usr/include/aarch64-linux-android:$PATH"
     else
-        TOOLCHAIN="arm-linux-androideabi-clang"
         REAL_ARCH="arm"
-        export PATH="$ANDROID_DIR/android-ndk-$ANDROID_NDK_VERSION/sysroot/usr/include/arm-linux-androideabi:$PATH"
     fi
 
-    echoy "Cleaning..."
-    make clean OS=android NDKROOT=$ANDROID_NDK_HOME ANDROID_API=$ANDROID_TARGET_API TARGET=android-$ANDROID_TARGET_API ARCH=$REAL_ARCH NDK_TOOLCHAIN="$TOOLCHAIN" 2>&1 >/dev/null
+    echog "Building oh264 for arch $C$REAL_ARCH \n"
+    echoy "Cleaning...\n"
+    make OS=android NDKROOT=${ANDROID_NDK_HOME} TARGET=android-${ANDROID_TARGET_API} NDKLEVEL=${ANDROID_TARGET_API} ARCH=${REAL_ARCH} NDK_TOOLCHAIN_VERSION=${TOOLCHAIN} clean #2>&1 >/dev/null
+    check_return $?
+
     echoy "Compiling oh264..."
-    make OS=android NDKROOT=$ANDROID_NDK_HOME ANDROID_API=$ANDROID_TARGET_API TARGET=android-$ANDROID_TARGET_API ARCH=$REAL_ARCH NDK_TOOLCHAIN="$TOOLCHAIN"
+    make OS=android NDKROOT=${ANDROID_NDK_HOME} TARGET=android-${ANDROID_TARGET_API} NDKLEVEL=${ANDROID_TARGET_API} ARCH=${REAL_ARCH} -C ${TEMP_DIR}/${OPENH264_DIR_NAME} NDK_TOOLCHAIN_VERSION=${TOOLCHAIN} libraries
     check_return $?
 }
+
 
 ## Build openh264
 function build_oh()
 {
-    for arch in "${TARGET_ARCHS[@]}"
-    do
-        echoy "Extracting..."
-        cd /tmp
-        if [ -d "/tmp/$OPENH264_DIR_NAME" ]; then
-            # Clean up
-            rm -rf "/tmp/$OPENH264_DIR_NAME"
-        fi
-        tar xzf openh264.tar.gz
-        check_return $?
-        # set dependencies
-        mkdir -p wels
-        ln -sf "$ANDROID_NDK_HOME/prebuilt/$HOST_TAG/bin/yasm" /tmp/wels/nasm
-        export PATH="/tmp/wels:$PATH"
+    if [ ! -d "$ROOT_LIB_DIR/$OPENH264_DIR_NAME" ]; then
+        for arch in "${TARGET_ARCHS[@]}"
+        do
+            echoy "Extracting..."
+            cd "$TEMP_DIR"
+            if [ -d "$TEMP_DIR/$OPENH264_DIR_NAME" ]; then
+                # Clean up
+                rm -rf "$TEMP_DIR/$OPENH264_DIR_NAME"
+            fi
+            tar xzf openh264.tar.gz
+            cp -r ${TEMP_DIR}/${OPENH264_DIR_NAME}/codec/api/svc/* ${TEMP_DIR}/${OPENH264_DIR_NAME}/include/wels
+            echo "done"
 
-        do_build "$arch"
-    done
+            do_build "$arch"
+        done
+    fi
 }
+
 
 # # # # # S T A R T # # #
 echoy "\nCompiling Openh264\n"
 set_android_paths
-#clean_openh
-#download_oh
+export NDK_TOOLCHAIN_VERSION=${TOOLCHAIN}
+clean_oh $1
+download_oh
 build_oh
-clean_openh
-
-# make OS=android NDKROOT=/home/bin/android/android-ndk-r21d TARGET=android-29 ARCH=arm NDK_TOOLCHAIN=arm-linux-androideabi-clang
-# make OS=android NDKROOT=/home/bin/android/android-ndk-r21d TARGET=android-29 NDKLEVEL=16 ARCH=arm NDK_TOOLCHAIN_VERSION=clang libraries
+echog "Done building Openh264\n"
